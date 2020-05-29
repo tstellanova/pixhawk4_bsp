@@ -1,0 +1,59 @@
+[package]
+name = "pixhawk4_bsp"
+version = "0.1.0"
+authors = ["Todd Stellanova <tstellanova@users.noreply.github.com>"]
+edition = "2018"
+
+
+description = "A board support package for the Pixhawk4 flight (PX4 FMUV4) controller hardware"
+
+[dependencies]
+cortex-m = "0.6.2"
+embedded-hal = { version = "0.2.3", features = ["unproven"] }
+panic-rtt-core = {version="0.1.1", optional=true}
+
+stm32f7 = {version = "0.11.0", features = ["stm32f765"]}
+stm32f7xx-hal = { git="https://github.com/stm32-rs/stm32f7xx-hal", features= ["stm32f765","rt"] }
+
+# Main FMU Processor: STM32F765
+  #32 Bit Arm® Cortex®-M7, 216MHz, 2MB memory, 512KB RAM
+  #IO Processor: STM32F100
+  #32 Bit Arm® Cortex®-M3, 24MHz, 8KB SRAM
+  #On-board sensors:
+  #Accel/Gyro: ICM-20689
+  #Accel/Gyro: BMI055
+  #Magnetometer: IST8310
+  #Barometer: MS5611
+  #GPS: ublox Neo-M8N GPS/GLONASS receiver; integrated magnetometer IST8310
+
+# internal ms5611 barometer
+ms5611-spi = { git= "https://github.com/tstellanova/ms5611-ehal" }
+
+# internal magnetometer
+ist8310 = "0.1.1"
+
+# internal Invensense/TDK ICM-20689 6DOF accel/gyro
+icm20689 = "0.1.1"
+
+# TODO internal Accel/Gyro: BMI055
+
+# external HMC5893 mag
+#hmc5983 = "0.1.3"
+
+
+
+# FRAM
+spi-memory = { git = "https://github.com/tstellanova/spi-memory" }
+#spi-memory  =  {path= "../spi-memory" }
+
+[dev-dependencies]
+cortex-m-rt = "0.6.12"
+#panic-rtt-core = {version="0.1.0"}
+shared-bus = {version="0.1.4", features=["cortexm"] }
+rand_core = "0.5.1"
+
+[features]
+default = []
+rttdebug = ["panic-rtt-core"]
+
+
