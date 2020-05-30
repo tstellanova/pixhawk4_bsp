@@ -14,18 +14,16 @@ use embedded_hal::PwmPin;
 const IMU_REPORTING_RATE_HZ: u16 = 200;
 const IMU_REPORTING_INTERVAL_MS: u16 = (1000 / IMU_REPORTING_RATE_HZ);
 
-use mpu9250::Mpu9250;
 /// Sensors
-use ms5611::{Ms5611, Oversampling};
 use ms5611_spi as ms5611;
+use ms5611::{Ms5611, Oversampling};
 
 // use crate::peripherals as peripherals;
-use hmc5983::HMC5983;
-use pixracer_bsp::peripherals;
+//TODO use hmc5983::HMC5983;
+use pixhawk4_bsp::peripherals::{self, Spi2PortType, SpiCsFram}
 use core::cmp::max;
-use rand_core::RngCore;
+// use rand_core::RngCore;
 use spi_memory::{Read, FastBlockRead};
-use pixracer_bsp::peripherals_pixracer::{Spi2PortType, SpiCsFram};
 
 
 #[entry]
@@ -36,7 +34,7 @@ fn main() -> ! {
     let (
         mut user_leds,
         mut delay_source,
-        mut rng,
+        // mut rng,
         i2c1_port,
         spi1_port,
         spi2_port,
@@ -90,11 +88,6 @@ fn main() -> ! {
         }
     };
 
-    let mut mpu_opt = {
-        let mpu = Mpu9250::imu_default(spi_bus1.acquire(), spi_cs_imu, &mut delay_source)
-            .expect("mpu init failed");
-        Some(mpu)
-    };
 
     let mut baro_int_opt = {
         let rc = Ms5611::new(spi_bus2.acquire(), spi_cs_baro, &mut delay_source);
@@ -149,12 +142,6 @@ fn main() -> ! {
 
         for _ in 0..10 {
             for _ in 0..10 {
-                if mpu_opt.is_some() {
-                    if let Ok(marg_all) = mpu_opt.as_mut().unwrap().all::<[f32; 3]>() {
-                        //rprintln!("imu az: {:.02}", marg_all.accel[2]);
-                    }
-                }
-
                 if tdk_opt.is_some() {
                     // if let Ok(gyro_sample) = tdk_6dof.get_gyro() {
                     //     //rprintln!("gyro: {:?}", gyro_sample);

@@ -19,32 +19,28 @@ stm32f7xx-hal = { git="https://github.com/stm32-rs/stm32f7xx-hal", features= ["s
   #32 Bit Arm® Cortex®-M7, 216MHz, 2MB memory, 512KB RAM
   #IO Processor: STM32F100
   #32 Bit Arm® Cortex®-M3, 24MHz, 8KB SRAM
-  #On-board sensors:
-  #Accel/Gyro: ICM-20689
-  #Accel/Gyro: BMI055
-  #Magnetometer: IST8310
-  #Barometer: MS5611
-  #GPS: ublox Neo-M8N GPS/GLONASS receiver; integrated magnetometer IST8310
 
 # internal ms5611 barometer
 ms5611-spi = { git= "https://github.com/tstellanova/ms5611-ehal" }
 
-# internal magnetometer
+# internal magnetometer (and optional external in GPS unit)
 ist8310 = "0.1.1"
 
 # internal Invensense/TDK ICM-20689 6DOF accel/gyro
 icm20689 = "0.1.1"
 
 # TODO internal Accel/Gyro: BMI055
+# TODO internal LTC4417 power path controller
 
-# external HMC5893 mag
+# external HMC5893 mag (optional)
 #hmc5983 = "0.1.3"
 
+# external GPS
+ublox-core = "0.1.0"
 
 
 # FRAM
 spi-memory = { git = "https://github.com/tstellanova/spi-memory" }
-#spi-memory  =  {path= "../spi-memory" }
 
 [dev-dependencies]
 cortex-m-rt = "0.6.12"

@@ -1,7 +1,12 @@
-use stm32f4xx_hal as p_hal;
+/*
+Copyright (c) 2020 Todd Stellanova
+LICENSE: BSD3 (see LICENSE file)
+*/
 
-use p_hal::stm32 as pac;
-use p_hal::stm32::I2C1;
+use stm32f7xx_hal as p_hal;
+use p_hal::device as pac;
+
+use pac::I2C1;
 
 // use p_hal::flash::FlashExt;
 use embedded_hal::blocking::delay::DelayMs;
@@ -12,86 +17,99 @@ use p_hal::time::{Hertz, U32Ext};
 
 #[cfg(feature = "rttdebug")]
 use panic_rtt_core::rprintln;
-use stm32f4xx_hal::pwm;
-use stm32f4xx_hal::rng::{RngExt, Rng};
+use stm32f7xx_hal::rcc::{HSEClock, HSEClockMode};
+// use p_hal::pwm;
+// use stm32f4xx_hal::rng::{RngExt, Rng};
+// use pac::I2C1;
 
 /// Initialize peripherals for Pixracer.
 /// Pixhawk4 FMU chip is stm32f765 216 MHz
 pub fn setup_peripherals() -> (
+    // LED output pins
     (
         impl OutputPin + ToggleableOutputPin,
         impl OutputPin + ToggleableOutputPin,
         impl OutputPin + ToggleableOutputPin,
     ),
+    // delay source
     impl DelayMs<u8>,
-    Rng,
+    // Rng,
     I2C1PortType,
     Spi1PortType,
     Spi2PortType,
-    SpiPinsImu,  // imu
+    // SpiPinsImu,  // imu
     SpiPins6Dof, // 6dof
     SpiPinsMag,  // mag
     SpiCsBaro,   // baro
     SpiCsFram, // ferro ram
     Spi1PowerEnable,
-    Tim1PwmChannels,
+    // Tim1PwmChannels,
 ) {
     let dp = pac::Peripherals::take().unwrap();
     let cp = cortex_m::Peripherals::take().unwrap();
 
     // Set up the system clock
-    let rcc = dp.RCC.constrain();
+    let mut rcc = dp.RCC.constrain();
+    //    rcc::{HSEClock, HSEClockMode},
+
     let clocks = rcc
         .cfgr
-        .use_hse(24.mhz()) // 24 MHz xtal
-        .sysclk(168.mhz()) // HCLK
-        .pclk1(42.mhz()) // APB1 clock is HCLK/4
-        .pclk2(84.mhz()) // APB2 clock is HCLK/2
+        .hse(HSEClock::new(16.mhz(), HSEClockMode::Oscillator)) // 16 MHz xtal
+        .sysclk(216.mhz()) // HCLK
+        .timclk1(54.mhz()) // APB1 clock (PCLK1) is HCLK/4
+        .timclk2(108.mhz()) // APB2 clock (PCLK2) is HCLK/2
         .freeze();
 
     let delay_source = p_hal::delay::Delay::new(cp.SYST, clocks);
-
-    let mut rand_source = dp.RNG.constrain(clocks);
-
-    // let hclk = clocks.hclk();
-    // let pll48clk = clocks.pll48clk().unwrap_or(0u32.hz());
-    // let pclk1 = clocks.pclk1();
-    // rprintln!("hclk: {} /16: {} pclk1: {} rng_clk: {}", hclk.0, hclk.0 / 16, pclk1.0, pll48clk.0);
+    // let mut rand_source = dp.RNG.constrain(clocks);
 
     let gpioa = dp.GPIOA.split();
     let gpiob = dp.GPIOB.split();
     let gpioc = dp.GPIOC.split();
     let gpiod = dp.GPIOD.split();
     let gpioe = dp.GPIOE.split();
+    let gpiog = dp.GPIOG.split();
+    let gpioi = dp.GPIOI.split();
 
-    let user_led1 = gpiob.pb11.into_push_pull_output(); //red
-    let user_led2 = gpiob.pb1.into_push_pull_output(); //green
-    let user_led3 = gpiob.pb3.into_push_pull_output(); //blue
 
-    let i2c1_port = {
-        let scl = gpiob.pb8.into_alternate_af4().set_open_drain();
-        let sda = gpiob.pb9.into_alternate_af4().set_open_drain();
-        p_hal::i2c::I2c::i2c1(dp.I2C1, (scl, sda), 400.khz(), clocks)
-    };
+    let user_led1 = gpiob.pb1.into_push_pull_output(); //red
+    let user_led2 = gpioc.pc6.into_push_pull_output(); //green
+    let user_led3 = gpioc.pc7.into_push_pull_output(); //blue
+
+
+    // SPI1 connects to internal sensors
+    // SPI2 connects to FRAM
+    // SPI4 connects to internal barometer only
+
+    //    let mut spi = Spi::new(p.SPI3, (sck, miso, mosi)).enable::<u8>(
+    //         &mut rcc,
+    //         spi::ClockDivider::DIV32,
+    //         spi::Mode {
+    //             polarity: spi::Polarity::IdleHigh,
+    //             phase: spi::Phase::CaptureOnSecondTransition,
+    //         },
+    //     );
 
     let spi1_port = {
-        let sck = gpioa.pa5.into_alternate_af5();
+        let sck = gpiog.pg11.into_alternate_af5();
         let miso = gpioa.pa6.into_alternate_af5();
-        let mosi = gpioa.pa7.into_alternate_af5();
+        let mosi = gpiod.pd7.into_alternate_af5();
 
-        p_hal::spi::Spi::spi1(
+        p_hal::spi::Spi::new(
             dp.SPI1,
-            (sck, miso, mosi),
-            embedded_hal::spi::MODE_3,
-            8_000_000.hz(),
-            clocks,
-        )
+            (sck, miso, mosi)).enable::<u8>(
+                &mut rcc,
+                p_hal::spi::ClockDivider::DIV32,
+            p_hal::spi::Mode::MODE_3,
+        );
+
     };
 
+
     let spi2_port = {
-        let sck = gpiob.pb10.into_alternate_af5();
-        let miso = gpiob.pb14.into_alternate_af5();
-        let mosi = gpiob.pb15.into_alternate_af5();
+        let sck = gpioi.pi1.into_alternate_af5();
+        let miso = gpioi.pi2.into_alternate_af5();
+        let mosi = gpioi.pi3.into_alternate_af5();
 
         p_hal::spi::Spi::spi2(
             dp.SPI2,
@@ -102,15 +120,33 @@ pub fn setup_peripherals() -> (
         )
     };
 
+    let spi4_port = {
+        let sck = gpioe.pe2.into_alternate_af5();
+        let miso = gpioe.pe13.into_alternate_af5();
+        let mosi = gpioe.pe6.into_alternate_af5();
+
+        p_hal::spi::Spi::spi4(
+            dp.SPI4,
+            (sck, miso, mosi),
+            embedded_hal::spi::MODE_3,
+            20_000_000.hz(),
+            clocks,
+        )
+    };
+
+    let i2c1_port = {
+        let scl = gpiob.pb8.into_alternate_af4().set_open_drain();
+        let sda = gpiob.pb9.into_alternate_af4().set_open_drain();
+        p_hal::i2c::I2c::i2c1(dp.I2C1, (scl, sda), p_hal::i2c::Mode::fast(400.khz()), clocks, 0)
+    };
+
     // SPI chip select and data ready pins
-    // MPU9250
-    let mut spi_cs_imu = gpioc.pc2.into_push_pull_output();
-    let _ = spi_cs_imu.set_high();
-    let spi_drdy_imu = gpiod.pd15.into_pull_up_input();
+
     // ICM20602 or ICM20608G
     let mut spi_cs_6dof = gpioc.pc15.into_push_pull_output();
     let _ = spi_cs_6dof.set_high();
     let spi_drdy_6dof = gpioc.pc14.into_pull_up_input();
+
     // HMC5883 (hmc5983) or LIS3MDL
     let mut spi_cs_mag = gpioe.pe15.into_push_pull_output();
     let _ = spi_cs_mag.set_high();
@@ -149,45 +185,39 @@ pub fn setup_peripherals() -> (
     // gpiod.pd14.into_push_pull_output().downgrade() // TIM4_CH3
 
     // Note that this channel order is different from the external pin order
-    let pwm_pins = (
-        gpioe.pe9.into_alternate_af1(), // TIM1_CH1 -> pin4 ?
-        gpioe.pe11.into_alternate_af1(), // TIM1_CH2 -> pin3 ?
-        gpioe.pe13.into_alternate_af1(), // TIM1_CH3 -> pin2 ?
-        gpioe.pe14.into_alternate_af1(), // TIM1_CH4 -> pin1 ?
-    );
+    // let pwm_pins = (
+    //     gpioe.pe9.into_alternate_af1(), // TIM1_CH1 -> pin4 ?
+    //     gpioe.pe11.into_alternate_af1(), // TIM1_CH2 -> pin3 ?
+    //     gpioe.pe13.into_alternate_af1(), // TIM1_CH3 -> pin2 ?
+    //     gpioe.pe14.into_alternate_af1(), // TIM1_CH4 -> pin1 ?
+    // );
 
-    //TODO we use 400 Hz by default for PWM output...may be able to drive faster with some ESCs
-    let pwm_tim1_channels = pwm::tim1(dp.TIM1, pwm_pins, clocks, 400.hz());
+    // //TODO we use 400 Hz by default for PWM output...may be able to drive faster with some ESCs
+    // let pwm_tim1_channels = pwm::tim1(dp.TIM1, pwm_pins, clocks, 400.hz());
 
-    let ppm_input = gpiob.pb0.into_alternate_af2().into_floating_input();
-    // PPM input
-    //#define HRT_PPM_CHANNEL              3  /* use capture/compare channel 3 */
-    // #define GPIO_PPM_IN                  (GPIO_ALT|GPIO_AF2|GPIO_PULLUP|GPIO_PORTB|GPIO_PIN0)
-    //  RC serial port:
-    // #define RC_SERIAL_PORT               "/dev/ttyS4"
 
     (
         (user_led1, user_led2, user_led3),
         delay_source,
-        rand_source,
+        // rand_source,
         i2c1_port,
         spi1_port,
         spi2_port,
-        (spi_cs_imu, spi_drdy_imu),
+        // (spi_cs_imu, spi_drdy_imu),
         (spi_cs_6dof, spi_drdy_6dof),
         (spi_cs_mag, spi_drdy_mag),
         spi_cs_baro,
         spi_cs_fram,
         spi1_power_enable,
-        pwm_tim1_channels
+        // pwm_tim1_channels
     )
 }
 
 pub type I2C1PortType = p_hal::i2c::I2c<
     I2C1,
     (
-        p_hal::gpio::gpiob::PB8<p_hal::gpio::AlternateOD<p_hal::gpio::AF4>>,
-        p_hal::gpio::gpiob::PB9<p_hal::gpio::AlternateOD<p_hal::gpio::AF4>>,
+        p_hal::gpio::gpiob::PB8<p_hal::gpio::Alternate<p_hal::gpio::AF4>>,
+        p_hal::gpio::gpiob::PB9<p_hal::gpio::Alternate<p_hal::gpio::AF4>>,
     ),
 >;
 
@@ -198,6 +228,7 @@ pub type Spi1PortType = p_hal::spi::Spi<
         p_hal::gpio::gpioa::PA6<p_hal::gpio::Alternate<p_hal::gpio::AF5>>, //MISO
         p_hal::gpio::gpioa::PA7<p_hal::gpio::Alternate<p_hal::gpio::AF5>>, //MOSI
     ),
+    p_hal::spi::Enabled<u8>
 >;
 
 pub type Spi2PortType = p_hal::spi::Spi<
@@ -207,12 +238,13 @@ pub type Spi2PortType = p_hal::spi::Spi<
         p_hal::gpio::gpiob::PB14<p_hal::gpio::Alternate<p_hal::gpio::AF5>>, //MISO
         p_hal::gpio::gpiob::PB15<p_hal::gpio::Alternate<p_hal::gpio::AF5>>, //MOSI
     ),
+    p_hal::spi::Enabled<u8>
 >;
 
-pub type SpiPinsImu = (
-    p_hal::gpio::gpioc::PC2<p_hal::gpio::Output<p_hal::gpio::PushPull>>,
-    p_hal::gpio::gpiod::PD15<p_hal::gpio::Input<p_hal::gpio::PullUp>>,
-);
+// pub type SpiPinsImu = (
+//     p_hal::gpio::gpioc::PC2<p_hal::gpio::Output<p_hal::gpio::PushPull>>,
+//     p_hal::gpio::gpiod::PD15<p_hal::gpio::Input<p_hal::gpio::PullUp>>,
+// );
 pub type SpiPins6Dof = (
     p_hal::gpio::gpioc::PC15<p_hal::gpio::Output<p_hal::gpio::PushPull>>,
     p_hal::gpio::gpioc::PC14<p_hal::gpio::Input<p_hal::gpio::PullUp>>,
@@ -230,10 +262,10 @@ pub type SpiCsFram =
 pub type Spi1PowerEnable =
     p_hal::gpio::gpioe::PE3<p_hal::gpio::Output<p_hal::gpio::PushPull>>;
 
-
-pub type Tim1PwmChannels = (
-    stm32f4xx_hal::pwm::PwmChannels<stm32f4::stm32f427::TIM1, stm32f4xx_hal::pwm::C1>,
-     stm32f4xx_hal::pwm::PwmChannels<stm32f4::stm32f427::TIM1, stm32f4xx_hal::pwm::C2>,
-     stm32f4xx_hal::pwm::PwmChannels<stm32f4::stm32f427::TIM1, stm32f4xx_hal::pwm::C3>,
-     stm32f4xx_hal::pwm::PwmChannels<stm32f4::stm32f427::TIM1, stm32f4xx_hal::pwm::C4>
-);
+//
+// pub type Tim1PwmChannels = (
+//     p_hal::pwm::PwmChannels<pac::TIM1, p_hal::pwm::C1>,
+//     p_hal::pwm::PwmChannels<pac::TIM1, p_hal::pwm::C2>,
+//     p_hal::pwm::PwmChannels<pac::TIM1, p_hal::pwm::C3>,
+//     p_hal::pwm::PwmChannels<pac::TIM1, p_hal::pwm::C4>
+// );
