@@ -6,21 +6,17 @@ LICENSE: BSD3 (see LICENSE file)
 use p_hal::device as pac;
 use stm32f7xx_hal as p_hal;
 
-use pac::I2C1;
+use pac::{I2C1, USART1};
 
 // use p_hal::flash::FlashExt;
-use embedded_hal::blocking::delay::DelayMs;
+use embedded_hal::blocking::delay::{DelayMs, DelayUs};
 use embedded_hal::digital::v2::{OutputPin, ToggleableOutputPin};
 use p_hal::gpio::GpioExt;
-use p_hal::rcc::RccExt;
+use p_hal::rcc::{HSEClock, HSEClockMode, RccExt};
 use p_hal::time::{Hertz, U32Ext};
 
 #[cfg(feature = "rttdebug")]
 use panic_rtt_core::rprintln;
-use stm32f7xx_hal::rcc::{HSEClock, HSEClockMode};
-// use p_hal::pwm;
-// use stm32f4xx_hal::rng::{RngExt, Rng};
-// use pac::I2C1;
 
 /// Initialize peripherals for Pixracer.
 /// Pixhawk4 FMU chip is stm32f765 216 MHz
@@ -32,7 +28,8 @@ pub fn setup_peripherals() -> (
         impl OutputPin + ToggleableOutputPin,
     ),
     // delay source
-    impl DelayMs<u8>,
+    impl DelayMs<u8> + DelayUs<u32>,
+    Gps1PortType,
     // // Rng,
     // I2C1PortType,
     // Spi1PortType,
@@ -61,17 +58,39 @@ pub fn setup_peripherals() -> (
     let delay_source = p_hal::delay::Delay::new(cp.SYST, clocks);
     // let mut rand_source = dp.RNG.constrain(clocks);
 
-    let gpioa = dp.GPIOA.split();
+    // let gpioa = dp.GPIOA.split();
     let gpiob = dp.GPIOB.split();
     let gpioc = dp.GPIOC.split();
-    let gpiod = dp.GPIOD.split();
-    let gpioe = dp.GPIOE.split();
-    let gpiog = dp.GPIOG.split();
-    let gpioi = dp.GPIOI.split();
+    // let gpiod = dp.GPIOD.split();
+    // let gpioe = dp.GPIOE.split();
+    // let gpiog = dp.GPIOG.split();
+    // let gpioi = dp.GPIOI.split();
 
     let user_led1 = gpiob.pb1.into_push_pull_output(); //red
     let user_led2 = gpioc.pc6.into_push_pull_output(); //green
     let user_led3 = gpioc.pc7.into_push_pull_output(); //blue
+
+    // USART1 is GPS port:
+    // let gps_port = {
+    //     let config = p_hal::serial::config::Config::default().baudrate(115200.bps());
+    //     let rx = gpiob.pb7.into_alternate_af7();
+    //     let tx = gpiob.pb6.into_alternate_af7();
+    //     dp.USART1.usart((tx, rx), config, &mut ccdr).unwrap()
+    // };
+
+    let gps1_port = {
+        let rx = gpiob.pb7.into_alternate_af7();
+        let tx = gpiob.pb6.into_alternate_af7();
+        p_hal::serial::Serial::new(
+            dp.USART1,
+            (tx, rx),
+            clocks,
+            p_hal::serial::Config {
+                baud_rate: 115_200.bps(),
+                oversampling: p_hal::serial::Oversampling::By8,
+            },
+        )
+    };
 
     // SPI1 connects to internal sensors
     // SPI2 connects to FRAM
@@ -160,6 +179,7 @@ pub fn setup_peripherals() -> (
     (
         (user_led1, user_led2, user_led3),
         delay_source,
+        gps1_port,
         // rand_source,
         // i2c1_port,
         // spi1_port,
@@ -230,3 +250,21 @@ pub type Spi1PowerEnable =
 //     p_hal::pwm::PwmChannels<pac::TIM1, p_hal::pwm::C3>,
 //     p_hal::pwm::PwmChannels<pac::TIM1, p_hal::pwm::C4>
 // );
+
+type Usart1PortType = p_hal::serial::Serial<
+    USART1,
+    (
+        p_hal::gpio::gpiob::PB6<p_hal::gpio::Alternate<p_hal::gpio::AF7>>, //tx
+        p_hal::gpio::gpiob::PB7<p_hal::gpio::Alternate<p_hal::gpio::AF7>>, //rx
+    ),
+>;
+
+//stm32f7xx_hal::serial::Serial<
+// stm32f7::stm32f765::USART1,
+// (
+// stm32f7xx_hal::gpio::gpiob::PB6<stm32f7xx_hal::gpio::Alternate<stm32f7xx_hal::gpio::AF7>>,
+// stm32f7xx_hal::gpio::gpiob::PB7<stm32f7xx_hal::gpio::Alternate<stm32f7xx_hal::gpio::AF7>>
+// )>`
+
+//GPS1: /dev/ttyS0 ?
+pub type Gps1PortType = Usart1PortType;

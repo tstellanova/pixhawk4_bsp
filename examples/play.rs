@@ -9,21 +9,21 @@ use panic_rtt_core::{self, rprint, rprintln, rtt_init_print};
 use embedded_hal::blocking::delay::DelayMs;
 use embedded_hal::digital::v2::OutputPin;
 use embedded_hal::digital::v2::ToggleableOutputPin;
-use embedded_hal::PwmPin;
+// use embedded_hal::PwmPin;
 
 const IMU_REPORTING_RATE_HZ: u16 = 30;
 const IMU_REPORTING_INTERVAL_MS: u16 = (1000 / IMU_REPORTING_RATE_HZ);
 
-use ms5611::{Ms5611, Oversampling};
+// use ms5611::{Ms5611, Oversampling};
 /// Sensors
-use ms5611_spi as ms5611;
+// use ms5611_spi as ms5611;
 
 // use crate::peripherals as peripherals;
 //TODO use hmc5983::HMC5983;
-use core::cmp::max;
+// use core::cmp::max;
 use pixhawk4_bsp::peripherals::{self}; //, Spi2PortType, SpiCsFram};
-// use rand_core::RngCore;
-use spi_memory::Read; //, FastBlockRead};
+                                       // use rand_core::RngCore;
+                                       // use spi_memory::Read; //, FastBlockRead};
 
 #[entry]
 fn main() -> ! {
@@ -33,6 +33,7 @@ fn main() -> ! {
     let (
         mut user_leds,
         mut delay_source,
+        gps1_port,
         // mut rng,
         // i2c1_port,
         // spi1_port,
@@ -56,6 +57,9 @@ fn main() -> ! {
     // let _ = spi1_power_enable.set_high();
     // wait a bit for sensors to power up
     delay_source.delay_ms(250u8);
+
+    let mut ublox = ublox_core::new_serial_driver(gps1_port);
+    ublox.setup(&mut delay_source).unwrap();
 
     // // setup pwm
     // let max_duty = tim1_pwm_chans.0.get_max_duty();
@@ -128,6 +132,26 @@ fn main() -> ! {
     let duty_increment = 1000;
     let mut pwm0_duty = min_duty;
     loop {
+        // check GNSS
+        if let Ok(msg_count) = ublox.handle_one_message() {
+            //console_print(&mut po_tx, format_args!(">>> msg_count: {} \r\n", msg_count));
+            if msg_count > 0 {
+                if let Some(nav_pvt) = ublox.take_last_nav_pvt() {
+                    rprintln!(
+                        ">>> nav_pvt lat, lon: {}, {} \r\n",
+                        nav_pvt.lat,
+                        nav_pvt.lon,
+                    );
+                }
+                if let Some(nav_dop) = ublox.take_last_nav_dop() {
+                    rprintln!(">>> nav_dop {} \r\n", nav_dop.itow);
+                }
+                if let Some(mon_hw) = ublox.take_last_mon_hw() {
+                    rprintln!(">>> mon_hw jam: {} \r\n", mon_hw.jam_ind);
+                }
+            }
+        }
+
         // // minimum duty = 20,000 ?
         // tim1_pwm_chans.0.set_duty(pwm0_duty);
         // pwm0_duty += duty_increment;
