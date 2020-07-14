@@ -17,8 +17,6 @@ shared-bus = {version="0.1.4", features=["cortexm"] }
 panic-rtt-core = {version="0.1.1", optional=true}
 rand_core = "0.5.1"
 
-
-
 # internal ms5611 barometer
 ms5611-spi = { git= "https://github.com/tstellanova/ms5611-ehal" }
 
@@ -31,7 +29,6 @@ icm20689 = "0.1.1"
 
 # TODO internal Accel/Gyro: BMI055
 # TODO internal LTC4417 power path controller
-
 
 # FRAM
 spi-memory = "0.2.0"

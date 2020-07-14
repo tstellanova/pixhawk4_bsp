@@ -11,9 +11,7 @@ use icm20689::{Builder, ICM20689};
 use ms5611_spi::Ms5611;
 
 use crate::peripherals;
-use core::borrow::BorrowMut;
 use core::cell::RefCell;
-use core::marker::PhantomData;
 
 
 use embedded_hal::blocking::delay::DelayMs;
@@ -21,9 +19,6 @@ use embedded_hal::digital::v2::OutputPin;
 use embedded_hal::digital::v2::ToggleableOutputPin;
 use embedded_hal::PwmPin;
 
-
-const IMU_REPORTING_RATE_HZ: u16 = 30;
-const IMU_REPORTING_INTERVAL_MS: u16 = (1000 / IMU_REPORTING_RATE_HZ);
 
 use shared_bus::BusMutex;
 
@@ -36,36 +31,34 @@ pub struct Board<'a> {
     // pub user_leds: [LedOutputPin; 3],
     pub delay_source: DelaySource,
     pub ext_i2c1: I2c1BusManager,
-    // pub mpu: Option<InternalMpu<'a>>,
     pub mag: Option<InternalMagnetometer<'a>>,
     pub six_dof: Option<Internal6Dof<'a>>,
     pub baro: Option<InternalBarometer<'a>>,
-    pub fram: Option<InternalFram<'a>>,
+   //TODO pub fram: Option<InternalFram<'a>>,
 }
 
 impl Board<'_> {
     pub fn new() -> Self {
         let (
-            mut user_leds,
+            mut _user_leds,
             mut delay_source,
-            mut rng,
+            _gps1_port,
             i2c1_port,
-            spi1_port,
+            // spi1_port,
             spi2_port,
-            (spi_cs_imu, _spi_drdy_imu),
+            _spi4_port,
             (spi_cs_6dof, _spi_drdy_6dof),
             (spi_cs_mag, _spi_drdy_mag),
             spi_cs_baro,
             spi_cs_fram,
             mut spi1_power_enable,
-            mut tim1_pwm_chans,
         ) = peripherals::setup();
 
-        let spi1_bus_mgr: &'static mut Spi1BusManager =
-            singleton!(:Spi1BusManager =
-                shared_bus::CortexMBusManager::new(spi1_port)
-            )
-            .unwrap();
+        // let spi1_bus_mgr: &'static mut Spi1BusManager =
+        //     singleton!(:Spi1BusManager =
+        //         shared_bus::CortexMBusManager::new(spi1_port)
+        //     )
+        //     .unwrap();
 
         let spi2_bus_mgr: &'static mut Spi2BusManager =
             singleton!(:Spi2BusManager =
@@ -76,34 +69,34 @@ impl Board<'_> {
         let mut i2c_bus1 = shared_bus::CortexMBusManager::new(i2c1_port);
 
         //TOOD use ist8310 instead of HMC5983??
-        let mut mag_int_opt = {
-            let mut mag_int = HMC5983::new_with_interface(
-                hmc5983::interface::SpiInterface::new(spi1_bus_mgr.acquire(), spi_cs_mag),
-            );
-            let rc = mag_int.init(&mut delay_source);
-            if mag_int.init(&mut delay_source).is_ok() {
-                Some(mag_int)
-            }
-            else {
-                #[cfg(feature = "rttdebug")]
-                rprintln!("mag setup fail: {:?}" , rc);
-                None
-            }
-        };
+        // let mut mag_int_opt = {
+        //     let mut mag_int = HMC5983::new_with_interface(
+        //         hmc5983::interface::SpiInterface::new(spi1_bus_mgr.acquire(), spi_cs_mag),
+        //     );
+        //     let rc = mag_int.init(&mut delay_source);
+        //     if mag_int.init(&mut delay_source).is_ok() {
+        //         Some(mag_int)
+        //     }
+        //     else {
+        //         #[cfg(feature = "rttdebug")]
+        //         rprintln!("mag setup fail: {:?}" , rc);
+        //         None
+        //     }
+        // };
 
 
-        let tdk_6dof_opt = {
-            let mut tdk_6dof =
-                icm20689::Builder::new_spi(spi1_bus_mgr.acquire(), spi_cs_6dof);
-            let rc = tdk_6dof.setup(&mut delay_source);
-            if rc.is_ok() {
-                Some(tdk_6dof)
-            } else {
-                #[cfg(feature = "rttdebug")]
-                rprintln!("6dof setup failed: {:?}", rc);
-                None
-            }
-        };
+        // let tdk_6dof_opt = {
+        //     let mut tdk_6dof =
+        //         icm20689::Builder::new_spi(spi1_bus_mgr.acquire(), spi_cs_6dof);
+        //     let rc = tdk_6dof.setup(&mut delay_source);
+        //     if rc.is_ok() {
+        //         Some(tdk_6dof)
+        //     } else {
+        //         #[cfg(feature = "rttdebug")]
+        //         rprintln!("6dof setup failed: {:?}", rc);
+        //         None
+        //     }
+        // };
 
         let mut fram_opt = {
             let proxy = spi2_bus_mgr.acquire();
@@ -129,7 +122,6 @@ impl Board<'_> {
             }
         }
 
-
         // power cycle spi devices
         let _ = spi1_power_enable.set_low();
         delay_source.delay_ms(250u8);
@@ -143,22 +135,22 @@ impl Board<'_> {
         // tim1_pwm_chans.0.enable();
         // //TODO provide PWM channels in the Board struct
 
-        let mag_int_opt = {
-            let mut mag_int = HMC5983::new_with_interface(
-                hmc5983::interface::SpiInterface::new(
-                    spi1_bus_mgr.acquire(),
-                    spi_cs_mag,
-                ),
-            );
-            let rc = mag_int.init(&mut delay_source);
-            if mag_int.init(&mut delay_source).is_ok() {
-                Some(mag_int)
-            } else {
-                #[cfg(feature = "rttdebug")]
-                rprintln!("mag setup fail: {:?}", rc);
-                None
-            }
-        };
+        // let mag_int_opt = {
+        //     let mut mag_int = HMC5983::new_with_interface(
+        //         hmc5983::interface::SpiInterface::new(
+        //             spi1_bus_mgr.acquire(),
+        //             spi_cs_mag,
+        //         ),
+        //     );
+        //     let rc = mag_int.init(&mut delay_source);
+        //     if mag_int.init(&mut delay_source).is_ok() {
+        //         Some(mag_int)
+        //     } else {
+        //         #[cfg(feature = "rttdebug")]
+        //         rprintln!("mag setup fail: {:?}", rc);
+        //         None
+        //     }
+        // };
 
 
         //TODO BMI055
@@ -182,21 +174,13 @@ impl Board<'_> {
             delay_source,
             ext_i2c1: i2c_bus1,
             baro: baro_int_opt,
-            mag: mag_int_opt,
-            six_dof: tdk_6dof_opt,
-            fram: fram_opt,
+            mag: None, //mag_int_opt,
+            six_dof: None, //tdk_6dof_opt,
+            //fram: fram_opt,
         }
     }
 }
 
-pub type I2c1BusManager = BusManager<I2c1Port>;
-pub type I2c1BusProxy<'a> = BusProxy<'a, I2c1Port>;
-
-pub type Spi1BusManager = BusManager<Spi1Port>;
-pub type Spi1BusProxy<'a> = BusProxy<'a, Spi1Port>;
-
-pub type Spi2BusManager = BusManager<Spi2Port>;
-pub type Spi2BusProxy<'a> = BusProxy<'a, Spi2Port>;
 
 pub type BusManager<Port> = shared_bus::proxy::BusManager<
     cortex_m::interrupt::Mutex<core::cell::RefCell<Port>>,
@@ -209,12 +193,22 @@ pub type BusProxy<'a, Port> = shared_bus::proxy::BusProxy<
     Port,
 >;
 
+pub type I2c1BusManager = BusManager<I2c1Port>;
+pub type I2c1BusProxy<'a> = BusProxy<'a, I2c1Port>;
+
+pub type Spi1BusManager = BusManager<Spi1Port>;
+pub type Spi1BusProxy<'a> = BusProxy<'a, Spi1Port>;
+
+pub type Spi2BusManager = BusManager<Spi2Port>;
+pub type Spi2BusProxy<'a> = BusProxy<'a, Spi2Port>;
+
+
 pub type InternalBarometer<'a> = Ms5611<Spi2BusProxy<'a>, SpiCsBaro>;
 pub type InternalMagnetometer<'a> =
     HMC5983<hmc5983::interface::SpiInterface<Spi1BusProxy<'a>, SpiCsMag>>;
 pub type Internal6Dof<'a> =
     ICM20689<icm20689::SpiInterface<Spi1BusProxy<'a>, SpiCs6Dof>>;
-// pub type InternalMpu<'a> =
-//     Mpu9250<mpu9250::SpiDevice<Spi1BusProxy<'a>, SpiCsImu>, mpu9250::Imu>;
+
+//<shared_bus::proxy::BusProxy<'a, M, SPI> as embedded_hal::blocking::spi::Transfer<u8>>
 pub type InternalFram<'a> =
     spi_memory::series25::Flash<Spi2BusProxy<'a>, SpiCsFram>;

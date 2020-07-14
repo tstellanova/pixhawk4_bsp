@@ -36,7 +36,7 @@ pub fn setup() -> (
     DelaySource,
     Gps1PortType,
     I2c1Port,
-    Spi1Port,
+    // Spi1Port,
     Spi2Port,
     Spi4Port,
     SpiPins6Dof, // 6dof
@@ -50,16 +50,6 @@ pub fn setup() -> (
 
     // Set up the system clock
     let mut rcc = dp.RCC.constrain();
-    let clocks = rcc
-        .cfgr
-        .hse(HSEClock::new(16.mhz(), HSEClockMode::Oscillator)) // 16 MHz xtal
-        .sysclk(216.mhz()) // HCLK
-        .timclk1(54.mhz()) // APB1 clock (PCLK1) is HCLK/4
-        .timclk2(108.mhz()) // APB2 clock (PCLK2) is HCLK/2
-        .freeze();
-
-    let delay_source = p_hal::delay::Delay::new(cp.SYST, clocks);
-    // let mut rand_source = dp.RNG.constrain(clocks);
 
     let gpioa = dp.GPIOA.split();
     let gpiob = dp.GPIOB.split();
@@ -73,49 +63,36 @@ pub fn setup() -> (
     let user_led2 = gpioc.pc6.into_push_pull_output(); //green
     let user_led3 = gpioc.pc7.into_push_pull_output(); //blue
 
-    // USART1 is GPS port:
-    let gps1_port = {
-        let rx = gpiob.pb7.into_alternate_af7();
-        let tx = gpiob.pb6.into_alternate_af7();
-        p_hal::serial::Serial::new(dp.USART1, (tx, rx), clocks, p_hal::serial::Config::default())
-    };
 
-    //let dma1 = DMA::new(dp.DMA1);
 
-    // SPI1 connects to internal sensors
-    let spi1_port = {
-        let sck = gpiog.pg11.into_alternate_af5();
-        let cipo = gpioa.pa6.into_alternate_af5();
-        let copi = gpiod.pd7.into_alternate_af5();
-
-        p_hal::spi::Spi::new(
-            dp.SPI1,
-            (sck, cipo, copi)).enable::<u8>(
-                &mut rcc,
-                p_hal::spi::ClockDivider::DIV32,
-                embedded_hal::spi::MODE_3
-        )
-    };
-
+    // // SPI1 connects to internal sensors
+    // let spi1_port: Spi1Port = {
+    //     let sck = gpiog.pg11.into_alternate_af5();
+    //     let cipo = gpioa.pa6.into_alternate_af5();
+    //     let copi = gpiod.pd7.into_alternate_af5();
+    //
+    //     p_hal::spi::Spi::new(dp.SPI1,(sck, cipo, copi)).enable::<u8>(
+    //         &mut rcc,
+    //         p_hal::spi::ClockDivider::DIV32,
+    //         embedded_hal::spi::MODE_3
+    //     )
+    // };
 
     // SPI2 connects to FRAM
-    let spi2_port = {
+    let spi2_port: Spi2Port = {
         let sck = gpioi.pi1.into_alternate_af5();
         let cipo = gpioi.pi2.into_alternate_af5();
         let copi = gpioi.pi3.into_alternate_af5();
 
-        p_hal::spi::Spi::new(
-            dp.SPI2,
-            (sck, cipo, copi)).enable::<u8>(
+        p_hal::spi::Spi::new( dp.SPI2,(sck, cipo, copi)).enable::<u8>(
             &mut rcc,
             p_hal::spi::ClockDivider::DIV32, //TODO s/b 20 MHz
             embedded_hal::spi::MODE_3
         )
-
     };
 
     // SPI4 connects to internal barometer only
-    let spi4_port = {
+    let spi4_port: Spi4Port = {
         let sck = gpioe.pe2.into_alternate_af5();
         let cipo = gpioe.pe13.into_alternate_af5();
         let copi = gpioe.pe6.into_alternate_af5();
@@ -129,10 +106,34 @@ pub fn setup() -> (
         )
     };
 
-    let i2c1_port = {
+    // this sucks, but we need to delay capturing clocks until we've used rcc for SPI...for some reason
+    let mut clocks = rcc
+        .cfgr
+        .hse(HSEClock::new(16.mhz(), HSEClockMode::Oscillator)) // 16 MHz xtal
+        .sysclk(216.mhz()) // HCLK
+        .timclk1(54.mhz()) // APB1 clock (PCLK1) is HCLK/4
+        .timclk2(108.mhz()) // APB2 clock (PCLK2) is HCLK/2
+        .freeze();
+
+    let delay_source = p_hal::delay::Delay::new(cp.SYST, clocks);
+
+    // let mut rand_source = dp.RNG.constrain(clocks);
+    // USART1 is GPS port:
+    let gps1_port = {
+        let rx = gpiob.pb7.into_alternate_af7();
+        let tx = gpiob.pb6.into_alternate_af7();
+        p_hal::serial::Serial::new(dp.USART1, (tx, rx), clocks, p_hal::serial::Config::default())
+    };
+
+    let i2c1_port: I2c1Port = {
         let scl = gpiob.pb8.into_alternate_af4().set_open_drain();
         let sda = gpiob.pb9.into_alternate_af4().set_open_drain();
-        p_hal::i2c::I2c::i2c1(dp.I2C1, (scl, sda), p_hal::i2c::Mode::fast(400.khz()), clocks, 0)
+        p_hal::i2c::I2c::i2c1(dp.I2C1,
+                              (scl, sda),
+                              p_hal::i2c::Mode::fast(400.khz()),
+                              clocks,
+                              &mut rcc.apb1
+                              )
     };
 
     // SPI chip select and data ready pins
@@ -150,7 +151,7 @@ pub fn setup() -> (
     let mut spi_cs_baro = gpiod.pd7.into_push_pull_output();
     let _ = spi_cs_baro.set_high();
 
-    let mut spi_cs_fram = gpiod.pd10.into_push_pull_output();
+    let mut spi_cs_fram: SpiCsFram = gpiod.pd10.into_push_pull_output();
     let _ = spi_cs_fram.set_high();
 
     //enables power to spi1 bus devices
@@ -163,7 +164,7 @@ pub fn setup() -> (
         delay_source,
         gps1_port,
         i2c1_port,
-        spi1_port,
+        //spi1_port,
         spi2_port,
         spi4_port,
         (spi_cs_6dof, spi_drdy_6dof),
@@ -181,12 +182,13 @@ pub type I2c1Port = p_hal::i2c::I2c<
     p_hal::gpio::gpiob::PB9<p_hal::gpio::Alternate<p_hal::gpio::AF4>>,
 >;
 
+pub type SpiPinAF5 = p_hal::gpio::Alternate<p_hal::gpio::AF5>;
 pub type Spi1Port = p_hal::spi::Spi<
     pac::SPI1,
     (
-        p_hal::gpio::gpiog::PG11<p_hal::gpio::Alternate<p_hal::gpio::AF5>>, //SCLK
-        p_hal::gpio::gpioa::PA6<p_hal::gpio::Alternate<p_hal::gpio::AF5>>, //CIPO
-        p_hal::gpio::gpiod::PD7<p_hal::gpio::Alternate<p_hal::gpio::AF5>>, //COPI
+        p_hal::gpio::gpiog::PG11<SpiPinAF5>, //SCLK
+        p_hal::gpio::gpioa::PA6<SpiPinAF5>, //CIPO
+        p_hal::gpio::gpiod::PD7<SpiPinAF5>, //COPI
     ),
     p_hal::spi::Enabled<u8>,
 >;
@@ -195,9 +197,9 @@ pub type Spi1Port = p_hal::spi::Spi<
 pub type Spi2Port = p_hal::spi::Spi<
     pac::SPI2,
     (
-        p_hal::gpio::gpiob::PB10<p_hal::gpio::Alternate<p_hal::gpio::AF5>>, //SCLK
-        p_hal::gpio::gpiob::PB14<p_hal::gpio::Alternate<p_hal::gpio::AF5>>, //CIPO
-        p_hal::gpio::gpiob::PB15<p_hal::gpio::Alternate<p_hal::gpio::AF5>>, //COPI
+        p_hal::gpio::gpioi::PI1<SpiPinAF5>, //SCLK
+        p_hal::gpio::gpioi::PI2<SpiPinAF5>, //CIPO
+        p_hal::gpio::gpioi::PI3<SpiPinAF5>, //COPI
     ),
     p_hal::spi::Enabled<u8>,
 >;
@@ -205,9 +207,9 @@ pub type Spi2Port = p_hal::spi::Spi<
 pub type Spi4Port = p_hal::spi::Spi<
     pac::SPI4,
     (
-        p_hal::gpio::gpioe::PE2<p_hal::gpio::Alternate<p_hal::gpio::AF5>>,  //SCLK
-        p_hal::gpio::gpioe::PE13<p_hal::gpio::Alternate<p_hal::gpio::AF5>>, //CIPO
-        p_hal::gpio::gpioe::PE6<p_hal::gpio::Alternate<p_hal::gpio::AF5>>,  //COPI
+        p_hal::gpio::gpioe::PE2<SpiPinAF5>,  //SCLK
+        p_hal::gpio::gpioe::PE13<SpiPinAF5>, //CIPO
+        p_hal::gpio::gpioe::PE6<SpiPinAF5>,  //COPI
     ),
     p_hal::spi::Enabled<u8>,
 >;
@@ -241,13 +243,6 @@ pub type SpiCsFram =
 pub type Spi1PowerEnable =
     p_hal::gpio::gpioe::PE3<p_hal::gpio::Output<p_hal::gpio::PushPull>>;
 
-//
-// pub type Tim1PwmChannels = (
-//     p_hal::pwm::PwmChannels<pac::TIM1, p_hal::pwm::C1>,
-//     p_hal::pwm::PwmChannels<pac::TIM1, p_hal::pwm::C2>,
-//     p_hal::pwm::PwmChannels<pac::TIM1, p_hal::pwm::C3>,
-//     p_hal::pwm::PwmChannels<pac::TIM1, p_hal::pwm::C4>
-// );
 
 type Usart1PortType = p_hal::serial::Serial<
     USART1,
