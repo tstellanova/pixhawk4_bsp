@@ -9,22 +9,21 @@ description = "A board support package for the Pixhawk4 flight (PX4 FMUV4) contr
 
 [dependencies]
 cortex-m = "0.6.2"
-embedded-hal = { version = "0.2.3", features = ["unproven"] }
+embedded-hal = { version = "0.2.4", features = ["unproven"] }
+stm32f7 = {version = "0.11"}
+#stm32f7xx-hal = {version="0.2.0",features= ["stm32f765","rt"], git="https://github.com/stm32-rs/stm32f7xx-hal"}
+stm32f7xx-hal = {version="0.2.0",features= ["stm32f765","rt"], path="../stm32f7xx-hal"}
+
+shared-bus = {version="0.1.4", features=["cortexm"] }
 panic-rtt-core = {version="0.1.1", optional=true}
-
-stm32f7 = {version = "0.11.0"} #, features = ["stm32f765"]}
-stm32f7xx-hal = { git="https://github.com/stm32-rs/stm32f7xx-hal", features= ["stm32f765","rt"] }
-
-# Main FMU Processor: STM32F765
-  #32 Bit Arm® Cortex®-M7, 216MHz, 2MB memory, 512KB RAM
-  #IO Processor: STM32F100
-  #32 Bit Arm® Cortex®-M3, 24MHz, 8KB SRAM
+rand_core = "0.5.1"
 
 # internal ms5611 barometer
 ms5611-spi = { git= "https://github.com/tstellanova/ms5611-ehal" }
 
 # internal magnetometer (and optional external in GPS unit)
 ist8310 = "0.1.1"
+hmc5983 = "0.1.3"
 
 # internal Invensense/TDK ICM-20689 6DOF accel/gyro
 icm20689 = "0.1.1"
@@ -32,26 +31,19 @@ icm20689 = "0.1.1"
 # TODO internal Accel/Gyro: BMI055
 # TODO internal LTC4417 power path controller
 
-# external HMC5893 mag (optional)
-#hmc5983 = "0.1.3"
-
-# external GPS
-ublox-core = "0.1.0"
-
-
 # FRAM
-spi-memory = { git = "https://github.com/tstellanova/spi-memory" }
+spi-memory = "0.2.0"
 
 [dev-dependencies]
 cortex-m-rt = "0.6.12"
 panic-rtt-core = {version="0.1.1"}
-shared-bus = {version="0.1.4", features=["cortexm"] }
-rand_core = "0.5.1"
-ublox-core = "0.1.0"
+
+# external GPS
+#ublox-core = "0.1.1"
 #ublox-core =  { git = "https://github.com/tstellanova/ublox-core" }
+#ublox-core = { path="../ublox-core"}
+
 
 [features]
 default = []
 rttdebug = ["panic-rtt-core"]
-
-
