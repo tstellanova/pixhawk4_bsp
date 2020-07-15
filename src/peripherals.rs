@@ -29,11 +29,12 @@ use stm32f7xx_hal::dma::DMA;
 pub fn setup() -> (
     UserLeds,
     DelaySource,
-    Gps1PortType,
+    GpsPortUart,
     I2c1Port,
-    // Spi1Port,
+    Spi1Port,
     Spi2Port,
     Spi4Port,
+    Spi5Port,
     SpiPins6Dof, // 6dof
     SpiPinsMag,  // mag
     SpiCsBaro,   // baro
@@ -58,8 +59,6 @@ pub fn setup() -> (
     let user_led1 = gpiob.pb1.into_push_pull_output(); //red
     let user_led2 = gpioc.pc6.into_push_pull_output(); //green
     let user_led3 = gpioc.pc7.into_push_pull_output(); //blue
-
-
 
     // SPI1 connects to internal sensors
     let spi1_port: Spi1Port = {
@@ -95,6 +94,20 @@ pub fn setup() -> (
 
         p_hal::spi::Spi::new(
             dp.SPI4,
+            (sck, cipo, copi)).enable::<u8>(
+            &mut rcc,
+            p_hal::spi::ClockDivider::DIV32, //TODO s/b 20 MHz
+            embedded_hal::spi::MODE_3
+        )
+    };
+
+    let spi5_port: Spi5Port = {
+        let sck = gpiof.pf7.into_alternate_af5();
+        let cipo = gpiof.pf8.into_alternate_af5();
+        let copi = gpiof.pf9.into_alternate_af5();
+
+        p_hal::spi::Spi::new(
+            dp.SPI5,
             (sck, cipo, copi)).enable::<u8>(
             &mut rcc,
             p_hal::spi::ClockDivider::DIV32, //TODO s/b 20 MHz
@@ -160,9 +173,10 @@ pub fn setup() -> (
         delay_source,
         gps1_port,
         i2c1_port,
-        //spi1_port,
+        spi1_port,
         spi2_port,
         spi4_port,
+        spi5_port,
         (spi_cs_6dof, spi_drdy_6dof),
         (spi_cs_mag, spi_drdy_mag),
         spi_cs_baro,
@@ -178,57 +192,72 @@ pub type I2c1Port = p_hal::i2c::I2c<
     p_hal::gpio::gpiob::PB9<p_hal::gpio::Alternate<p_hal::gpio::AF4>>,
 >;
 
-pub type SpiPinAF5 = p_hal::gpio::Alternate<p_hal::gpio::AF5>;
+/// The AF pin type used for SPI peripherals on this MCU
+pub type SpiDataPin = p_hal::gpio::Alternate<p_hal::gpio::AF5>;
+
+/// Internal SPI1 bus: connects to various onboard sensors
 pub type Spi1Port = p_hal::spi::Spi<
     pac::SPI1,
     (
-        p_hal::gpio::gpiog::PG11<SpiPinAF5>, //SCLK
-        p_hal::gpio::gpioa::PA6<SpiPinAF5>, //CIPO
-        p_hal::gpio::gpiod::PD7<SpiPinAF5>, //COPI
+        p_hal::gpio::gpiog::PG11<SpiDataPin>, //SCLK
+        p_hal::gpio::gpioa::PA6<SpiDataPin>, //CIPO
+        p_hal::gpio::gpiod::PD7<SpiDataPin>, //COPI
     ),
     p_hal::spi::Enabled<u8>,
 >;
 
-
+/// Internal SPI2 bus: connects to FRAM
 pub type Spi2Port = p_hal::spi::Spi<
     pac::SPI2,
     (
-        p_hal::gpio::gpioi::PI1<SpiPinAF5>, //SCLK
-        p_hal::gpio::gpioi::PI2<SpiPinAF5>, //CIPO
-        p_hal::gpio::gpioi::PI3<SpiPinAF5>, //COPI
+        p_hal::gpio::gpioi::PI1<SpiDataPin>, //SCLK
+        p_hal::gpio::gpioi::PI2<SpiDataPin>, //CIPO
+        p_hal::gpio::gpioi::PI3<SpiDataPin>, //COPI
     ),
     p_hal::spi::Enabled<u8>,
 >;
 
+/// Internal SPI4 bus: connects to internal barometer only
 pub type Spi4Port = p_hal::spi::Spi<
     pac::SPI4,
     (
-        p_hal::gpio::gpioe::PE2<SpiPinAF5>,  //SCLK
-        p_hal::gpio::gpioe::PE13<SpiPinAF5>, //CIPO
-        p_hal::gpio::gpioe::PE6<SpiPinAF5>,  //COPI
+        p_hal::gpio::gpioe::PE2<SpiDataPin>,  //SCLK
+        p_hal::gpio::gpioe::PE13<SpiDataPin>, //CIPO
+        p_hal::gpio::gpioe::PE6<SpiDataPin>,  //COPI
+    ),
+    p_hal::spi::Enabled<u8>,
+>;
+
+///External port marked "SPI":  is SPI5:
+/// Pinout left-right: (Vcc, SCK, CIPO, COPI, CS1, CS2, GND)
+pub type Spi5Port = p_hal::spi::Spi<
+    pac::SPI5,
+    (
+        p_hal::gpio::gpiof::PF7<SpiDataPin>, //SCLK
+        p_hal::gpio::gpiof::PF8<SpiDataPin>, //CIPO
+        p_hal::gpio::gpiof::PF9<SpiDataPin>, //COPI
     ),
     p_hal::spi::Enabled<u8>,
 >;
 
 
-pub type SpiPinsImu = (
-    p_hal::gpio::gpioc::PC2<p_hal::gpio::Output<p_hal::gpio::PushPull>>,
-    p_hal::gpio::gpiod::PD15<p_hal::gpio::Input<p_hal::gpio::PullUp>>,
-);
+// pub type SpiPinsImu = (
+//     p_hal::gpio::gpioc::PC2<p_hal::gpio::Output<p_hal::gpio::PushPull>>,
+//     p_hal::gpio::gpiod::PD15<p_hal::gpio::Input<p_hal::gpio::PullUp>>,
+// );
 
 pub type SpiCs6Dof = p_hal::gpio::gpioc::PC15<p_hal::gpio::Output<p_hal::gpio::PushPull>>;
 pub type SpiPins6Dof = (
-    SpiCs6Dof,
-    p_hal::gpio::gpioc::PC14<p_hal::gpio::Input<p_hal::gpio::PullUp>>,
+    SpiCs6Dof, //CSN
+    p_hal::gpio::gpioc::PC14<p_hal::gpio::Input<p_hal::gpio::PullUp>>, //DRDY
 );
 
 
 pub type SpiCsMag =
     p_hal::gpio::gpioe::PE15<p_hal::gpio::Output<p_hal::gpio::PushPull>>;
-
 pub type SpiPinsMag = (
-    SpiCsMag,
-    p_hal::gpio::gpioe::PE12<p_hal::gpio::Input<p_hal::gpio::PullUp>>,
+    SpiCsMag, //CSN
+    p_hal::gpio::gpioe::PE12<p_hal::gpio::Input<p_hal::gpio::PullUp>>, //DRDY
 );
 
 pub type SpiCsBaro =
@@ -236,6 +265,7 @@ pub type SpiCsBaro =
 pub type SpiCsFram =
     p_hal::gpio::gpiod::PD10<p_hal::gpio::Output<p_hal::gpio::PushPull>>;
 
+/// Enables power on the SPI1 bus
 pub type Spi1PowerEnable =
     p_hal::gpio::gpioe::PE3<p_hal::gpio::Output<p_hal::gpio::PushPull>>;
 
@@ -249,8 +279,10 @@ type Usart1PortType = p_hal::serial::Serial<
 >;
 
 
+
 //GPS1: /dev/ttyS0 ?
-pub type Gps1PortType = Usart1PortType;
+/// External port marked "GPS MODULE" combines this UART
+pub type GpsPortUart = Usart1PortType;
 
 pub type Dma1Type = DMA<pac::DMA1>;
 
