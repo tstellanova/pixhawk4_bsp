@@ -4,7 +4,7 @@ LICENSE: BSD3 (see LICENSE file)
 */
 
 use stm32f7xx_hal as p_hal;
-use p_hal::pac as pac;
+use stm32f7xx_hal::pac as pac;
 
 use pac::{I2C1, USART1};
 
