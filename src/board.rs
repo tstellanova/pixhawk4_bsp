@@ -28,19 +28,19 @@ use panic_rtt_core::rprintln;
 /// The main Board type for this hardware
 /// TODO: handle R12 / R15 differences in onboard sensors
 pub struct Board<'a> {
-    // pub user_leds: [LedOutputPin; 3],
+    pub user_leds: UserLeds,
     pub delay_source: DelaySource,
     pub ext_i2c1: I2c1BusManager,
     pub mag: Option<InternalMagnetometer<'a>>,
     pub six_dof: Option<Internal6Dof<'a>>,
     pub baro: Option<InternalBarometer<'a>>,
-   //TODO pub fram: Option<InternalFram<'a>>,
+    pub fram: Option<InternalFram<'a>>,
 }
 
 impl Board<'_> {
     pub fn new() -> Self {
         let (
-            mut _user_leds,
+            user_leds,
             mut delay_source,
             _gps1_port,
             i2c1_port,
@@ -110,17 +110,17 @@ impl Board<'_> {
             }
         };
 
-        if fram_opt.is_some() {
-            let flosh = fram_opt.as_mut().unwrap();
-            if let Ok(ident) = flosh.read_jedec_id() {
-                #[cfg(feature = "rttdebug")]
-                rprintln!("FRAM ident: {:?}", ident);
-                // Identification([c2, 22, 00])
-                // maybe FM25V02-G per ramtron:
-                // F-RAM 256 kilobit (32K x 8 bit = 32 kilobytes)
-                // dump_fram(flosh, &mut delay_source);
-            }
-        }
+        // if fram_opt.is_some() {
+        //     let flosh = fram_opt.as_mut().unwrap();
+        //     if let Ok(ident) = flosh.read_jedec_id() {
+        //         #[cfg(feature = "rttdebug")]
+        //         rprintln!("FRAM ident: {:?}", ident);
+        //         // Identification([c2, 22, 00])
+        //         // maybe FM25V02-G per ramtron:
+        //         // F-RAM 256 kilobit (32K x 8 bit = 32 kilobytes)
+        //         // dump_fram(flosh, &mut delay_source);
+        //     }
+        // }
 
         // power cycle spi devices
         let _ = spi1_power_enable.set_low();
@@ -168,15 +168,14 @@ impl Board<'_> {
         };
 
 
-
         Self {
-           // user_leds: [user_leds.0, user_leds.1, user_leds.2],
+            user_leds,
             delay_source,
             ext_i2c1: i2c_bus1,
             baro: baro_int_opt,
             mag: None, //mag_int_opt,
             six_dof: None, //tdk_6dof_opt,
-            //fram: fram_opt,
+            fram: fram_opt,
         }
     }
 }
@@ -212,3 +211,4 @@ pub type Internal6Dof<'a> =
 //<shared_bus::proxy::BusProxy<'a, M, SPI> as embedded_hal::blocking::spi::Transfer<u8>>
 pub type InternalFram<'a> =
     spi_memory::series25::Flash<Spi2BusProxy<'a>, SpiCsFram>;
+

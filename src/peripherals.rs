@@ -27,12 +27,7 @@ use stm32f7xx_hal::dma::DMA;
 /// Initialize peripherals for Pixracer.
 /// Pixhawk4 FMU chip is stm32f765 216 MHz
 pub fn setup() -> (
-    // LED output pins
-    (
-        impl OutputPin + ToggleableOutputPin,
-        impl OutputPin + ToggleableOutputPin,
-        impl OutputPin + ToggleableOutputPin,
-    ),
+    UserLeds,
     DelaySource,
     Gps1PortType,
     I2c1Port,
@@ -56,6 +51,7 @@ pub fn setup() -> (
     let gpioc = dp.GPIOC.split();
     let gpiod = dp.GPIOD.split();
     let gpioe = dp.GPIOE.split();
+    let gpiof = dp.GPIOF.split();
     let gpiog = dp.GPIOG.split();
     let gpioi = dp.GPIOI.split();
 
@@ -65,18 +61,18 @@ pub fn setup() -> (
 
 
 
-    // // SPI1 connects to internal sensors
-    // let spi1_port: Spi1Port = {
-    //     let sck = gpiog.pg11.into_alternate_af5();
-    //     let cipo = gpioa.pa6.into_alternate_af5();
-    //     let copi = gpiod.pd7.into_alternate_af5();
-    //
-    //     p_hal::spi::Spi::new(dp.SPI1,(sck, cipo, copi)).enable::<u8>(
-    //         &mut rcc,
-    //         p_hal::spi::ClockDivider::DIV32,
-    //         embedded_hal::spi::MODE_3
-    //     )
-    // };
+    // SPI1 connects to internal sensors
+    let spi1_port: Spi1Port = {
+        let sck = gpiog.pg11.into_alternate_af5();
+        let cipo = gpioa.pa6.into_alternate_af5();
+        let copi = gpiod.pd7.into_alternate_af5();
+
+        p_hal::spi::Spi::new(dp.SPI1,(sck, cipo, copi)).enable::<u8>(
+            &mut rcc,
+            p_hal::spi::ClockDivider::DIV32,
+            embedded_hal::spi::MODE_3
+        )
+    };
 
     // SPI2 connects to FRAM
     let spi2_port: Spi2Port = {
@@ -148,7 +144,7 @@ pub fn setup() -> (
     let _ = spi_cs_mag.set_high();
     let spi_drdy_mag = gpioe.pe12.into_pull_up_input();
 
-    let mut spi_cs_baro = gpiod.pd7.into_push_pull_output();
+    let mut spi_cs_baro = gpiof.pf10.into_push_pull_output();
     let _ = spi_cs_baro.set_high();
 
     let mut spi_cs_fram: SpiCsFram = gpiod.pd10.into_push_pull_output();
@@ -236,7 +232,7 @@ pub type SpiPinsMag = (
 );
 
 pub type SpiCsBaro =
-    p_hal::gpio::gpiod::PD7<p_hal::gpio::Output<p_hal::gpio::PushPull>>;
+    p_hal::gpio::gpiof::PF10<p_hal::gpio::Output<p_hal::gpio::PushPull>>;
 pub type SpiCsFram =
     p_hal::gpio::gpiod::PD10<p_hal::gpio::Output<p_hal::gpio::PushPull>>;
 
@@ -259,3 +255,10 @@ pub type Gps1PortType = Usart1PortType;
 pub type Dma1Type = DMA<pac::DMA1>;
 
 pub type DelaySource = p_hal::delay::Delay;
+
+pub type UserLedOutPin = p_hal::gpio::Output<p_hal::gpio::PushPull>;
+pub type UserLed1 =     p_hal::gpio::gpiob::PB1<UserLedOutPin>;
+pub type UserLed2 =     p_hal::gpio::gpioc::PC6<UserLedOutPin>;
+pub type UserLed3 =     p_hal::gpio::gpioc::PC7<UserLedOutPin>;
+
+pub type UserLeds = (UserLed1, UserLed2, UserLed3);

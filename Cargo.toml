@@ -10,8 +10,9 @@ description = "A board support package for the Pixhawk4 flight (PX4 FMUV4) contr
 [dependencies]
 cortex-m = "0.6.2"
 embedded-hal = { version = "0.2.4", features = ["unproven"] }
-stm32f7 = {version = "0.11.0"}
-stm32f7xx-hal = {version="0.2.0",features= ["stm32f765","rt"], git="https://github.com/stm32-rs/stm32f7xx-hal"}
+stm32f7 = {version = "0.11"}
+#stm32f7xx-hal = {version="0.2.0",features= ["stm32f765","rt"], git="https://github.com/stm32-rs/stm32f7xx-hal"}
+stm32f7xx-hal = {version="0.2.0",features= ["stm32f765","rt"], path="../stm32f7xx-hal"}
 
 shared-bus = {version="0.1.4", features=["cortexm"] }
 panic-rtt-core = {version="0.1.1", optional=true}

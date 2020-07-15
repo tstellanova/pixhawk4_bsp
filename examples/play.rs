@@ -31,9 +31,9 @@ fn main() -> ! {
     let loop_interval = IMU_REPORTING_INTERVAL_MS as u8;
     rprintln!("loop_interval: {}", loop_interval);
 
-    let _ = board.user_leds[0].set_high();
-    let _ = board.user_leds[1].set_low();
-    let _ = board.user_leds[2].set_high();
+    let _ = board.user_leds.0.set_high();
+    let _ = board.user_leds.1.set_low();
+    let _ = board.user_leds.2.set_high();
 
     // let min_duty = 21000;
     // let duty_increment = 1000;
@@ -51,13 +51,6 @@ fn main() -> ! {
 
         for _ in 0..10 {
             for _ in 0..10 {
-                if board.mpu.is_some() {
-                    if let Ok(marg_all) =
-                        board.mpu.as_mut().unwrap().all::<[f32; 3]>()
-                    {
-                        rprintln!("mpu az: {:.02}", marg_all.accel[2]);
-                    }
-                }
 
                 if board.six_dof.is_some() {
                     // if let Ok(gyro_sample) = board.six_dof.as_ref().unwrap().get_gyro() {
@@ -99,8 +92,8 @@ fn main() -> ! {
             }
         }
 
-        let _ = board.user_leds[0].toggle();
-        let _ = board.user_leds[1].toggle();
+        let _ = board.user_leds.0.toggle();
+        let _ = board.user_leds.1.toggle();
         board.delay_source.delay_ms(loop_interval);
 
         loop_count += 1;
