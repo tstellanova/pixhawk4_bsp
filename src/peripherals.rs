@@ -35,6 +35,7 @@ pub fn setup() -> (
     Spi2Port,
     Spi4Port,
     Spi5Port,
+    Spi5CSNPins,
     SpiPins6Dof, // 6dof
     SpiPinsMag,  // mag
     SpiCsBaro,   // baro
@@ -148,6 +149,11 @@ pub fn setup() -> (
 
     // SPI chip select and data ready pins
 
+    let spi5_csn_pins: Spi5CSNPins = (
+        gpioi.pi4.into_push_pull_output(), //CS1
+        gpioi.pi10.into_push_pull_output() //CS2
+        );
+
     // // ICM20602 or ICM20608G
     let mut spi_cs_6dof = gpioc.pc15.into_push_pull_output();
     let _ = spi_cs_6dof.set_high();
@@ -178,6 +184,7 @@ pub fn setup() -> (
         spi2_port,
         spi4_port,
         spi5_port,
+        spi5_csn_pins,
         (spi_cs_6dof, spi_drdy_6dof),
         (spi_cs_mag, spi_drdy_mag),
         spi_cs_baro,
@@ -246,6 +253,7 @@ pub type Spi5Port = p_hal::spi::Spi<
 pub type Spi5CS1 = p_hal::gpio::gpioi::PI4<p_hal::gpio::Output<p_hal::gpio::PushPull>>;
 /// External SPI5 port, CS2
 pub type Spi5CS2 = p_hal::gpio::gpioi::PI10<p_hal::gpio::Output<p_hal::gpio::PushPull>>;
+pub type Spi5CSNPins = (Spi5CS1, Spi5CS2);
 
 /// Internal 6dof sensor (icm20689) CSN pin
 pub type SpiCs6Dof = p_hal::gpio::gpioc::PC15<p_hal::gpio::Output<p_hal::gpio::PushPull>>;

@@ -50,7 +50,7 @@ spi-memory = "0.2.0"
 [dev-dependencies]
 cortex-m-rt = "0.6.12"
 panic-rtt-core = {version="0.1.1"}
-
+pmw3901-ehal = {git="https://github.com/tstellanova/pmw3901-ehal", branch="trunk"}
 
 [features]
 default = []
