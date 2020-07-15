@@ -139,7 +139,8 @@ pub fn setup() -> (
         let sda = gpiob.pb9.into_alternate_af4().set_open_drain();
         p_hal::i2c::I2c::i2c1(dp.I2C1,
                               (scl, sda),
-                              p_hal::i2c::Mode::fast(400.khz()),
+                              p_hal::i2c::Mode::standard(400.khz()),
+                              // p_hal::i2c::Mode::fast(400.khz()),
                               clocks,
                               &mut rcc.apb1
                               )
@@ -186,6 +187,7 @@ pub fn setup() -> (
 
 }
 
+/// External "I2C A" port?
 pub type I2c1Port = p_hal::i2c::I2c<
     I2C1,
     p_hal::gpio::gpiob::PB8<p_hal::gpio::Alternate<p_hal::gpio::AF4>>,
@@ -228,7 +230,7 @@ pub type Spi4Port = p_hal::spi::Spi<
     p_hal::spi::Enabled<u8>,
 >;
 
-///External port marked "SPI":  is SPI5:
+/// External port marked "SPI" is SPI5:
 /// Pinout left-right: (Vcc, SCK, CIPO, COPI, CS1, CS2, GND)
 pub type Spi5Port = p_hal::spi::Spi<
     pac::SPI5,
@@ -240,19 +242,19 @@ pub type Spi5Port = p_hal::spi::Spi<
     p_hal::spi::Enabled<u8>,
 >;
 
+/// External SPI5 port, CS1
+pub type Spi5CS1 = p_hal::gpio::gpioi::PI4<p_hal::gpio::Output<p_hal::gpio::PushPull>>;
+/// External SPI5 port, CS2
+pub type Spi5CS2 = p_hal::gpio::gpioi::PI10<p_hal::gpio::Output<p_hal::gpio::PushPull>>;
 
-// pub type SpiPinsImu = (
-//     p_hal::gpio::gpioc::PC2<p_hal::gpio::Output<p_hal::gpio::PushPull>>,
-//     p_hal::gpio::gpiod::PD15<p_hal::gpio::Input<p_hal::gpio::PullUp>>,
-// );
-
+/// Internal 6dof sensor (icm20689) CSN pin
 pub type SpiCs6Dof = p_hal::gpio::gpioc::PC15<p_hal::gpio::Output<p_hal::gpio::PushPull>>;
 pub type SpiPins6Dof = (
     SpiCs6Dof, //CSN
     p_hal::gpio::gpioc::PC14<p_hal::gpio::Input<p_hal::gpio::PullUp>>, //DRDY
 );
 
-
+/// Internal magnetometer CSN pin
 pub type SpiCsMag =
     p_hal::gpio::gpioe::PE15<p_hal::gpio::Output<p_hal::gpio::PushPull>>;
 pub type SpiPinsMag = (
@@ -260,6 +262,7 @@ pub type SpiPinsMag = (
     p_hal::gpio::gpioe::PE12<p_hal::gpio::Input<p_hal::gpio::PullUp>>, //DRDY
 );
 
+/// Internal barometer CSN pin
 pub type SpiCsBaro =
     p_hal::gpio::gpiof::PF10<p_hal::gpio::Output<p_hal::gpio::PushPull>>;
 pub type SpiCsFram =
@@ -284,8 +287,7 @@ type Usart1PortType = p_hal::serial::Serial<
 /// External port marked "GPS MODULE" combines this UART
 pub type GpsPortUart = Usart1PortType;
 
-pub type Dma1Type = DMA<pac::DMA1>;
-
+/// MCU-provided Delay timer
 pub type DelaySource = p_hal::delay::Delay;
 
 pub type UserLedOutPin = p_hal::gpio::Output<p_hal::gpio::PushPull>;

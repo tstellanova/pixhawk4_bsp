@@ -24,31 +24,19 @@ use pixhawk4_bsp::board::Board;
 #[entry]
 fn main() -> ! {
     rtt_init_print!(NoBlockTrim);
-    rprintln!("-- > MAIN --");
+    rprintln!("--> MAIN --");
 
     let mut board = Board::new();
 
     let loop_interval = IMU_REPORTING_INTERVAL_MS as u8;
-    rprintln!("loop_interval: {}", loop_interval);
+    rprintln!("min loop_interval: {}", loop_interval);
 
     let _ = board.user_leds.0.set_high();
     let _ = board.user_leds.1.set_low();
     let _ = board.user_leds.2.set_high();
 
-    // let min_duty = 21000;
-    // let duty_increment = 1000;
-    // let mut pwm0_duty = min_duty;
     let mut loop_count: u32 = 0;
     loop {
-        //TODO pwm sweep
-        // // minimum duty = 20,000 ?
-        // tim1_pwm_chans.0.set_duty(pwm0_duty);
-        // pwm0_duty += duty_increment;
-        // if pwm0_duty > max_duty {
-        //     pwm0_duty = min_duty;
-        // }
-        // rprintln!("duty: {}", pwm0_duty);
-
         for _ in 0..10 {
             for _ in 0..10 {
 
