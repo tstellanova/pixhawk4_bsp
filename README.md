@@ -19,8 +19,8 @@ may do so simply by eg connecting to QGroundControl via USB.
 BSD-3-Clause: See LICENSE file
 
 ## Status
-
-Work in progress.
+Work in progress. Currently the only thing preventing crates.io publication of
+this crate is that the [stm32f4xx-hal is missing some SPI1 pins](https://github.com/stm32-rs/stm32f7xx-hal/pull/66)
 
 - [x] Basic support for onboard (internal) sensors
 - [x] Support for some external ports
