@@ -32,7 +32,6 @@ rand_core = "0.5.1"
 
 # internal ms5611 barometer
 ms5611-spi = "0.2.0"
-#ms5611-spi = { git= "https://github.com/tstellanova/ms5611-ehal" }
 
 # internal magnetometer (and optional external in GPS unit)
 ist8310 = "0.1.1"
@@ -50,7 +49,8 @@ spi-memory = "0.2.0"
 [dev-dependencies]
 cortex-m-rt = "0.6.12"
 panic-rtt-core = {version="0.1.1"}
-pmw3901-ehal = {git="https://github.com/tstellanova/pmw3901-ehal", branch="trunk"}
+pmw3901-ehal = {path="../pmw3901-ehal", features=["rttdebug"], version="0.1"}
+#pmw3901-ehal = {git="https://github.com/tstellanova/pmw3901-ehal", branch="trunk"}
 
 [features]
 default = []
