@@ -1,6 +1,6 @@
 [package]
 name = "pixhawk4_bsp"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Todd Stellanova <tstellanova@users.noreply.github.com>"]
 edition = "2018"
 description = "A board support package for the Pixhawk 4 flight controller (PX4 FMUV4) hardware"
@@ -49,8 +49,8 @@ spi-memory = "0.2.0"
 [dev-dependencies]
 cortex-m-rt = "0.6.12"
 panic-rtt-core = {version="0.1.1"}
-pmw3901-ehal = {path="../pmw3901-ehal", features=["rttdebug"], version="0.1"}
-#pmw3901-ehal = {git="https://github.com/tstellanova/pmw3901-ehal", branch="trunk"}
+#pmw3901-ehal = {path="../pmw3901-ehal", version="0.1"}
+pmw3901-ehal = {version="0.1", git="https://github.com/tstellanova/pmw3901-ehal", branch="trunk"}
 
 [features]
 default = []

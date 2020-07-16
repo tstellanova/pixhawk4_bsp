@@ -36,8 +36,8 @@ fn main() -> ! {
     rprintln!("min loop_interval: {}", loop_interval);
 
     let _ = board.user_leds.0.set_high();
-    let _ = board.user_leds.1.set_low();
-    let _ = board.user_leds.2.set_high();
+    let _ = board.user_leds.1.set_low();// FMU "PWR" LED: green always on
+    let _ = board.user_leds.2.set_low();
 
     let mut flow = PMW3901::new(
         board.ext_spi.acquire(),
@@ -49,9 +49,10 @@ fn main() -> ! {
         if let Ok(sample) = flow.get_motion() {
             rprintln!("flow {:?}",sample);
         }
-        let _ = board.user_leds.0.toggle();
-        let _ = board.user_leds.1.toggle();
-        let _ = board.user_leds.2.toggle();
+
+        //let _ = board.user_leds.0.toggle();// FMU "B/E" LED: red
+        //let _ = board.user_leds.1.toggle();// FMU "PWR" LED: green
+        let _ = board.user_leds.2.toggle();// FMU "ACT" LED: blue
         board.delay_source.delay_ms(loop_interval);
     }
 }
